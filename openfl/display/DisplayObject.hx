@@ -2,6 +2,8 @@ package openfl.display; #if !flash #if !openfl_legacy
 
 
 import lime.ui.MouseCursor;
+import openfl._internal.renderer.cairo.CairoGraphics;
+import openfl._internal.renderer.cairo.CairoShape;
 import openfl._internal.renderer.canvas.CanvasGraphics;
 import openfl._internal.renderer.canvas.CanvasShape;
 import openfl._internal.renderer.dom.DOMShape;
@@ -203,7 +205,7 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 	 * the table show <code>blendMode</code> values applied to a circular display
 	 * object(2) superimposed on another display object(1).</p>
 	 */
-	public var blendMode:BlendMode;
+	public var blendMode(default, set):BlendMode;
 	
 	/**
 	 * If set to <code>true</code>, NME will use the software renderer to cache
@@ -710,6 +712,7 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 	@:dox(hide) @:noCompletion public var __worldColorTransform:ColorTransform;
 	
 	@:noCompletion private var __alpha:Float;
+	@:noCompletion private var __blendMode:BlendMode;
 	@:noCompletion private var __filters:Array<BitmapFilter>;
 	@:noCompletion private var __graphics:Graphics;
 	@:noCompletion private var __interactive:Bool;
@@ -792,6 +795,13 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 		if (event.bubbles && parent != null && parent != this) {
 			
 			event.eventPhase = EventPhase.BUBBLING_PHASE;
+			
+			if (event.target == null) {
+				
+				event.target = this;
+				
+			}
+			
 			parent.dispatchEvent (event);
 			
 		}
@@ -939,7 +949,7 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 		if (parent != null) {
 			
 			var bounds = new Rectangle ();
-			__getBounds (bounds, null);
+			__getBounds (bounds, __getTransform ());
 			
 			return bounds.containsPoint (new Point (x, y));
 			
@@ -1005,7 +1015,7 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 		
 		if (__graphics != null) {
 			
-			__graphics.__getBounds (rect, matrix != null ? matrix : __worldTransform);
+			__graphics.__getBounds (rect, matrix);
 			
 		}
 		
@@ -1104,11 +1114,44 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 	}
 	
 	
+	@:noCompletion @:dox(hide) public function __renderCairo (renderSession:RenderSession):Void {
+		
+		if (__graphics != null) {
+			
+			CairoShape.render (this, renderSession);
+			
+		}
+		
+	}
+	
+	
+	@:noCompletion @:dox(hide) public function __renderCairoMask (renderSession:RenderSession):Void {
+		
+		if (__graphics != null) {
+			
+			CairoGraphics.renderMask (__graphics, renderSession);
+			
+		}
+		
+	}
+	
+	
 	@:noCompletion @:dox(hide) public function __renderCanvas (renderSession:RenderSession):Void {
 		
 		if (__graphics != null) {
 			
 			CanvasShape.render (this, renderSession);
+			
+		}
+		
+	}
+	
+	
+	@:noCompletion @:dox(hide) public function __renderCanvasMask (renderSession:RenderSession):Void {
+		
+		if (__graphics != null) {
+			
+			CanvasGraphics.renderMask (__graphics, renderSession);
 			
 		}
 		
@@ -1133,17 +1176,6 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 		if (__graphics != null) {
 			
 			GraphicsRenderer.render (this, renderSession);
-			
-		}
-		
-	}
-	
-	
-	@:noCompletion @:dox(hide) public function __renderMask (renderSession:RenderSession):Void {
-		
-		if (__graphics != null) {
-			
-			CanvasGraphics.renderMask (__graphics, renderSession);
 			
 		}
 		
@@ -1211,6 +1243,8 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 			
 		}
 		
+		var sr = scrollRect;
+		
 		if (parent != null) {
 			
 			var parentTransform = parent.__worldTransform;
@@ -1230,17 +1264,15 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 			__worldTransform.b = a00 * b01 + a01 * b11;
 			__worldTransform.c = a10 * b00 + a11 * b10;
 			__worldTransform.d = a10 * b01 + a11 * b11;
+			__worldTransform.tx = x * b00 + y * b10 + parentTransform.tx;
+			__worldTransform.ty = x * b01 + y * b11 + parentTransform.ty;
 			
-			if (scrollRect == null) {
-				
-				__worldTransform.tx = x * b00 + y * b10 + parentTransform.tx;
-				__worldTransform.ty = x * b01 + y * b11 + parentTransform.ty;
-				
-			} else {
-				
-				__worldTransform.tx = (x - scrollRect.x) * b00 + (y - scrollRect.y) * b10 + parentTransform.tx;
-				__worldTransform.ty = (x - scrollRect.x) * b01 + (y - scrollRect.y) * b11 + parentTransform.ty;
-				
+			if (sr != null) {
+				if(__worldTransform.a != 1 || __worldTransform.b != 0 || __worldTransform.c != 0 || __worldTransform.d != 1) {
+					sr = sr.transform(__worldTransform);
+				}
+				__worldTransform.tx = (x - sr.x) * b00 + (y - sr.y) * b10 + parentTransform.tx;
+				__worldTransform.ty = (x - sr.x) * b01 + (y - sr.y) * b11 + parentTransform.ty;
 			}
 			
 			if(__isMask) __maskCached = false;
@@ -1251,17 +1283,15 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 			__worldTransform.c = -__rotationSine * scaleY;
 			__worldTransform.b = __rotationSine * scaleX;
 			__worldTransform.d = __rotationCosine * scaleY;
+			__worldTransform.tx = x;
+			__worldTransform.ty = y;
 			
-			if (scrollRect == null) {
-				
-				__worldTransform.tx = x;
-				__worldTransform.ty = y;
-				
-			} else {
-				
-				__worldTransform.tx = y - scrollRect.x;
+			if (sr != null) {
+				if(__worldTransform.a != 1 || __worldTransform.b != 0 || __worldTransform.c != 0 || __worldTransform.d != 1) {
+					sr = sr.transform(__worldTransform);
+				}
+				__worldTransform.tx = x - scrollRect.x;
 				__worldTransform.ty = y - scrollRect.y;
-				
 			}
 			
 		}
@@ -1312,6 +1342,11 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 				
 				__worldAlpha = alpha * parent.__worldAlpha;
 				__worldColorTransform.__combine(parent.__worldColorTransform);
+				
+				if ((blendMode == null || blendMode == NORMAL)) {
+					
+					__blendMode = parent.__blendMode;
+				}
 				
 				#else
 				
@@ -1403,15 +1438,18 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 		
 		if (__graphics != null) {
 			
-			maskGraphics.__commands.push(OverrideMatrix(this.__worldTransform));
-			maskGraphics.__commands = maskGraphics.__commands.concat(__graphics.__commands);
+			maskGraphics.__commands.push (OverrideMatrix (this.__worldTransform));
+			maskGraphics.__commands = maskGraphics.__commands.concat (__graphics.__commands);
 			maskGraphics.__dirty = true;
 			maskGraphics.__visible = true;
+			
 			if (maskGraphics.__bounds == null) {
+				
 				maskGraphics.__bounds = new Rectangle();
+				
 			}
 			
-			__graphics.__getBounds(maskGraphics.__bounds, @:privateAccess Matrix.__identity);
+			__graphics.__getBounds (maskGraphics.__bounds, @:privateAccess Matrix.__identity);
 			
 		}
 		
@@ -1436,6 +1474,14 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable {
 		
 		if (value != __alpha) __setRenderDirty ();
 		return __alpha = value;
+		
+	}
+	
+	
+	@:noCompletion private function set_blendMode (value:BlendMode):BlendMode {
+		
+		__blendMode = value;
+		return blendMode = value;
 		
 	}
 	
