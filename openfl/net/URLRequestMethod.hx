@@ -6,27 +6,27 @@ package openfl.net; #if !flash #if (!openfl_legacy || disable_legacy_networking)
  * URLRequest object should use the <code>POST</code> method or the
  * <code>GET</code> method when sending data to a server.
  */
-@:enum abstract URLRequestMethod(String) from String to String {
+class URLRequestMethod {
 	
 	/**
 	 * Specifies that the URLRequest object is a <code>DELETE</code>.
 	 */
-	var DELETE = "DELETE";
+	public static var DELETE:String = "DELETE";
 	
 	/**
 	 * Specifies that the URLRequest object is a <code>GET</code>.
 	 */
-	var GET = "GET";
+	public static var GET:String = "GET";
 	
 	/**
 	 * Specifies that the URLRequest object is a <code>HEAD</code>.
 	 */
-	var HEAD = "HEAD";
+	public static var HEAD:String = "HEAD";
 	
 	/**
 	 * Specifies that the URLRequest object is <code>OPTIONS</code>.
 	 */
-	var OPTIONS = "OPTIONS";
+	public static var OPTIONS:String = "OPTIONS";
 	
 	/**
 	 * Specifies that the URLRequest object is a <code>POST</code>.
@@ -36,12 +36,12 @@ package openfl.net; #if !flash #if (!openfl_legacy || disable_legacy_networking)
 	 * that uses the POST method(one that has its <code>method</code> property
 	 * set to <code>URLRequestMethod.POST</code>) as using the GET method.</p>
 	 */
-	var POST = "POST";
+	public static var POST:String = "POST";
 	
 	/**
 	 * Specifies that the URLRequest object is a <code>PUT</code>.
 	 */
-	var PUT = "PUT";
+	public static var PUT:String = "PUT";
 	
 }
 

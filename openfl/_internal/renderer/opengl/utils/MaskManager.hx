@@ -2,60 +2,32 @@ package openfl._internal.renderer.opengl.utils;
 
 
 import lime.graphics.GLRenderContext;
-import openfl._internal.renderer.AbstractMaskManager;
 import openfl._internal.renderer.RenderSession;
 import openfl.display.DisplayObject;
 
-
-class GLMaskManager extends AbstractMaskManager {
-	
+class MaskManager {
 	
 	public var gl:GLRenderContext;
 	
-	
-	public function new (renderSession:RenderSession) {
-		
-		super (renderSession);
-		
-		setContext (renderSession.gl);
-		
+	public function new(gl:GLRenderContext) {
+		setContext(gl);
 	}
 	
-	
-	public function destroy () {
-		
+	public function destroy() {
 		gl = null;
-		
 	}
 	
-	
-	public override function pushMask (mask:DisplayObject) {
-		
-		renderSession.stencilManager.pushMask (mask, renderSession);
-		
-	}
-	
-	
-	public override function popMask () {
-		
-		renderSession.stencilManager.popMask (null, renderSession);
-		
-	}
-	
-	
-	public function setContext (gl:GLRenderContext) {
-		
-		if (renderSession != null) {
-			
-			renderSession.gl = gl;
-			
-		}
-		
+	public function setContext(gl:GLRenderContext) {
 		this.gl = gl;
-		
 	}
 	
+	public function pushMask(object:DisplayObject, renderSession:RenderSession) {
+		renderSession.stencilManager.pushMask(object, renderSession);
+	}
 	
+	public function popMask(object:DisplayObject, renderSession:RenderSession) {
+		renderSession.stencilManager.popMask(object, renderSession);
+	}
 }
 
 /*

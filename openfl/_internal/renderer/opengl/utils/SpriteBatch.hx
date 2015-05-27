@@ -8,7 +8,6 @@ import openfl._internal.renderer.opengl.utils.VertexAttribute;
 import openfl._internal.renderer.RenderSession;
 import openfl.display.BitmapData;
 import openfl.display.DisplayObject;
-import openfl.display.PixelSnapping;
 import openfl.display.Tilesheet;
 import openfl.geom.ColorTransform;
 import openfl.geom.Matrix;
@@ -23,7 +22,6 @@ import lime.utils.*;
 @:access(openfl.display.Graphics)
 @:access(openfl.display.DisplayObject)
 @:access(openfl.display.Tilesheet)
-@:access(openfl.geom.Matrix)
 class SpriteBatch {
 
 	static inline var VERTS_PER_SPRITE:Int = 4;
@@ -133,7 +131,7 @@ class SpriteBatch {
 	}
 	
 	public function finish() {
-		stop();
+		flush();
 		clipRect = null;
 		drawing = false;
 	}
@@ -150,7 +148,7 @@ class SpriteBatch {
 		flush();
 	}
 	
-	public function renderBitmapData(bitmapData:BitmapData, smoothing:Bool, matrix:Matrix, ct:ColorTransform, ?alpha:Float = 1, ?blendMode:BlendMode, ?pixelSnapping:PixelSnapping) {
+	public function renderBitmapData(bitmapData:BitmapData, smoothing:Bool, matrix:Matrix, ct:ColorTransform, ?alpha:Float = 1, ?blendMode:BlendMode) {
 		if (bitmapData == null) return;
 		var texture = bitmapData.getTexture(gl);
 		
@@ -167,7 +165,7 @@ class SpriteBatch {
 		enableAttributes(0);
 		
 		var index = batchedSprites * 4 * elementsPerVertex;
-		fillVertices(index, bitmapData.width, bitmapData.height, matrix, uvs, null, color, pixelSnapping);
+		fillVertices(index, bitmapData.width, bitmapData.height, matrix, uvs, null, color);
 		
 		setState(batchedSprites, texture, smoothing, blendMode, ct, true);
 		
@@ -191,7 +189,6 @@ class SpriteBatch {
 			case Tilesheet.TILE_BLEND_ADD:		ADD;
 			case Tilesheet.TILE_BLEND_MULTIPLY:	MULTIPLY;
 			case Tilesheet.TILE_BLEND_SCREEN:	SCREEN;
-			case Tilesheet.TILE_BLEND_SUBTRACT:	SUBTRACT;
 			case _:								NORMAL;
 		};
 		
@@ -333,7 +330,7 @@ class SpriteBatch {
 				
 				color = ((Std.int(alpha * 255)) & 0xFF) << 24 | (tint & 0xFF) << 16 | ((tint >> 8) & 0xFF) << 8 | ((tint >> 16) & 0xFF);
 				
-				fillVertices(bIndex, rect.width, rect.height, matrix, uvs, null, color, NEVER);
+				fillVertices(bIndex, rect.width, rect.height, matrix, uvs, null, color);
 				
 				setState(batchedSprites, texture, smooth, blendMode, object.__worldColorTransform, false);
 				
@@ -378,10 +375,9 @@ class SpriteBatch {
 	}
 	
 	inline function fillVertices(index:Int, width:Float, height:Float, matrix:Matrix, uvs:TextureUvs, ?pivot:Point,
-		?color:Int = 0xFFFFFFFF, ?pixelSnapping:PixelSnapping) {
+		?color:Int = 0xFFFFFFFF) {
 		
 		var w0:Float, w1:Float, h0:Float, h1:Float;
-		
 		
 		if (pivot == null) {
 			w0 = width; w1 = 0;
@@ -393,11 +389,6 @@ class SpriteBatch {
 			h1 = height * -pivot.y; 
 		}
 		
-		if (pixelSnapping == null) {
-			pixelSnapping = PixelSnapping.NEVER;
-		}
-		
-		var snap = pixelSnapping != NEVER;
 		var a = matrix.a;
 		var b = matrix.b;
 		var c = matrix.c;
@@ -406,52 +397,33 @@ class SpriteBatch {
 		var ty = matrix.ty;
 		var cOffsetIndex = 0;
 		
-		if(!snap) {
-			positions[index++] = (a * w1 + c * h1 + tx);
-			positions[index++] = (d * h1 + b * w1 + ty);
-		} else {
-			positions[index++] = Math.fround(a * w1 + c * h1 + tx);
-			positions[index++] = Math.fround(d * h1 + b * w1 + ty);
-		}
+		positions[index++] = (a * w1 + c * h1 + tx);
+		positions[index++] = (d * h1 + b * w1 + ty);
 		positions[index++] = uvs.x0;
 		positions[index++] = uvs.y0;
 		if(enableColor) {
 			colors[index++] = color;
 		}
 		
-		if(!snap) {
-			positions[index++] = (a * w0 + c * h1 + tx);
-			positions[index++] = (d * h1 + b * w0 + ty);
-		} else {
-			positions[index++] = Math.fround(a * w0 + c * h1 + tx);
-			positions[index++] = Math.fround(d * h1 + b * w0 + ty);
-		}
+		positions[index++] = (a * w0 + c * h1 + tx);
+		positions[index++] = (d * h1 + b * w0 + ty);
 		positions[index++] = uvs.x1;
 		positions[index++] = uvs.y1;
 		if(enableColor) {
 			colors[index++] = color;
 		}
 		
-		if(!snap) {
-			positions[index++] = (a * w0 + c * h0 + tx);
-			positions[index++] = (d * h0 + b * w0 + ty);
-		} else {
-			positions[index++] = Math.fround(a * w0 + c * h0 + tx);
-			positions[index++] = Math.fround(d * h0 + b * w0 + ty);
-		}
+		positions[index++] = (a * w0 + c * h0 + tx);
+		positions[index++] = (d * h0 + b * w0 + ty);
 		positions[index++] = uvs.x2;
 		positions[index++] = uvs.y2;
 		if(enableColor) {
 			colors[index++] = color;
 		}
 		
-		if(!snap) {
-			positions[index++] = (a * w1 + c * h0 + tx);
-			positions[index++] = (d * h0 + b * w1 + ty);
-		} else {
-			positions[index++] = Math.fround(a * w1 + c * h0 + tx);
-			positions[index++] = Math.fround(d * h0 + b * w1 + ty);
-		}
+		
+		positions[index++] = (a * w1 + c * h0 + tx);
+		positions[index++] = (d * h0 + b * w1 + ty);
 		positions[index++] = uvs.x3;
 		positions[index++] = uvs.y3;
 		if(enableColor) {
@@ -477,7 +449,9 @@ class SpriteBatch {
 	function flush() {
 		if (batchedSprites == 0) return;
 		
-		if (clipRect != null) {
+		if (clipRect == null) {
+			gl.disable(gl.SCISSOR_TEST);
+		} else {
 			gl.enable(gl.SCISSOR_TEST);
 			gl.scissor(Math.floor(clipRect.x), 
 						Math.floor(clipRect.y),
@@ -552,7 +526,8 @@ class SpriteBatch {
 		// TODO cache this somehow?, don't do each state change?
 		shader.bindVertexArray(vertexArray);
 		
-		gl.uniformMatrix3fv(shader.getUniformLocation(DefUniform.ProjectionMatrix), false, renderSession.projectionMatrix.toArray(true));
+		var projection = renderSession.projection;
+		gl.uniform2f(shader.getUniformLocation(DefUniform.ProjectionVector), projection.x, projection.y);
 		
 		if (state.colorTransform != null) {
 			var ct = state.colorTransform;
@@ -569,7 +544,6 @@ class SpriteBatch {
 		gl.bindTexture(gl.TEXTURE_2D, state.texture);
 		
 		if (state.textureSmooth) {
-		//if (false) {
 			gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 			gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 		} else {
@@ -616,7 +590,6 @@ class SpriteBatch {
 		
 		return r;
 	}
-	
 }
 
 @:access(openfl.geom.ColorTransform)

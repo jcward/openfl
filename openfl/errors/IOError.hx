@@ -8,8 +8,6 @@ class IOError extends Error {
 		
 		super (message);
 		
-		name = "IOError";
-		
 	}
 	
 	

@@ -4,11 +4,9 @@ package openfl.errors; #if !flash
 class RangeError extends Error {
 	
 	
-	public function new (message:String = "") {
+	public function new (inMessage:String = "") {
 		
-		super (message, 0);
-		
-		name = "RangeError";
+		super (inMessage, 0);
 		
 	}
 	

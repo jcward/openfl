@@ -104,9 +104,10 @@ class FilterManager {
 		this.renderSession = renderSession;
 		defaultShader = renderSession.shaderManager.defaultShader;
 		
-		// TODO
-		width = 0;
-		height = 0;
+		var projection = renderSession.projection;
+		
+		width = Std.int (projection.x * 2);
+		height = Std.int (-projection.y * 2);
 		this.buffer = buffer;
 		
 	}

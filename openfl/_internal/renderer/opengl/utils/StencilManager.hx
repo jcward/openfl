@@ -38,19 +38,21 @@ class StencilManager {
 		
 	}
 	
-	public inline function prepareGraphics(fill:GLBucketData, renderSession:RenderSession, translationMatrix:Float32Array):Void {
+	public inline function prepareGraphics(fill:GLBucketData, renderSession:RenderSession, projection:Point, translationMatrix:Float32Array):Void {
+		var offset = renderSession.offset;
 		var shader = renderSession.shaderManager.fillShader;
 		
 		renderSession.shaderManager.setShader (shader);
 		gl.uniformMatrix3fv (shader.getUniformLocation(FillUniform.TranslationMatrix), false, translationMatrix);
-		gl.uniformMatrix3fv (shader.getUniformLocation(FillUniform.ProjectionMatrix), false, renderSession.projectionMatrix.toArray(true));
+		gl.uniform2f (shader.getUniformLocation(FillUniform.ProjectionVector), projection.x, -projection.y);
+		gl.uniform2f (shader.getUniformLocation(FillUniform.OffsetVector), -offset.x, -offset.y);
 			
 		fill.vertexArray.bind();
 		shader.bindVertexArray(fill.vertexArray);
 		gl.bindBuffer (gl.ELEMENT_ARRAY_BUFFER, fill.indexBuffer);
 	}
 	
-	public function pushBucket (bucket:GLBucket, renderSession:RenderSession, translationMatrix:Float32Array, ?isMask:Bool = false):Void {
+	public function pushBucket (bucket:GLBucket, renderSession:RenderSession, projection:Point, translationMatrix:Float32Array, ?isMask:Bool = false):Void {
 		
 		if(!isMask) {
 			gl.enable(gl.STENCIL_TEST);
@@ -66,7 +68,7 @@ class StencilManager {
 		
 		for (fill in bucket.fills) {
 			if (fill.available) continue;
-			prepareGraphics(fill, renderSession, translationMatrix);
+			prepareGraphics(fill, renderSession, projection, translationMatrix);
 			gl.drawElements (fill.drawMode, fill.glIndices.length, gl.UNSIGNED_SHORT, 0);
 		}
 		
@@ -124,7 +126,7 @@ class StencilManager {
 			
 			switch(bucket.mode) {
 				case Fill, PatternFill:
-					pushBucket(bucket, renderSession, translationMatrix.toArray(true), true);
+					pushBucket(bucket, renderSession, renderSession.projection, translationMatrix.toArray(true), true);
 				case _:
 			}
 		}
@@ -137,10 +139,10 @@ class StencilManager {
 	
 	public function popMask(object:DisplayObject, renderSession:RenderSession) {
 		
-		//var maskGraphics:Graphics = object.__maskGraphics;
-		//if (maskGraphics == null || maskGraphics.__commands.length <= 0) {
-			//return;
-		//}
+		var maskGraphics:Graphics = object.__maskGraphics;
+		if (maskGraphics == null || maskGraphics.__commands.length <= 0) {
+			return;
+		}
 		
 		stencilMask--;
 		

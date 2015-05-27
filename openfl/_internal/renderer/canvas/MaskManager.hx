@@ -1,7 +1,6 @@
 package openfl._internal.renderer.canvas;
 
 
-import openfl._internal.renderer.AbstractMaskManager;
 import openfl.display.*;
 import openfl.geom.*;
 
@@ -9,17 +8,20 @@ import openfl.geom.*;
 @:keep
 
 
-class CanvasMaskManager extends AbstractMaskManager {
+class MaskManager {
+	
+	
+	private var renderSession:RenderSession;
 	
 	
 	public function new (renderSession:RenderSession) {
 		
-		super (renderSession);
+		this.renderSession = renderSession;
 		
 	}
 	
 	
-	public override function pushMask (mask:DisplayObject):Void {
+	public function pushMask (mask:DisplayObject):Void {
 		
 		var context = renderSession.context;
 		
@@ -31,7 +33,7 @@ class CanvasMaskManager extends AbstractMaskManager {
 		context.setTransform (transform.a, transform.c, transform.b, transform.d, transform.tx, transform.ty);
 		
 		context.beginPath ();
-		mask.__renderCanvasMask (renderSession);
+		mask.__renderMask (renderSession);
 		
 		context.clip ();
 		
@@ -40,7 +42,7 @@ class CanvasMaskManager extends AbstractMaskManager {
 	}
 	
 	
-	public override function pushRect (rect:Rectangle, transform:Matrix):Void {
+	public function pushRect (rect:Rectangle, transform:Matrix):Void {
 		
 		var context = renderSession.context;
 		context.save ();
@@ -54,7 +56,7 @@ class CanvasMaskManager extends AbstractMaskManager {
 	}
 	
 	
-	public override function popMask ():Void {
+	public function popMask ():Void {
 		
 		renderSession.context.restore ();
 		
