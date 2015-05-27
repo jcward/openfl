@@ -13,13 +13,16 @@ class DefaultShader extends Shader {
 			'attribute vec2 ${Attrib.TexCoord};',
 			'attribute vec4 ${Attrib.Color};',
 			
-			'uniform mat3 ${Uniform.ProjectionMatrix};',
+			'uniform vec2 ${Uniform.ProjectionVector};',
+			'uniform vec2 ${Uniform.OffsetVector};',
 			
 			'varying vec2 vTexCoord;',
 			'varying vec4 vColor;',
 			
+			'const vec2 center = vec2(-1.0, 1.0);',
+			
 			'void main(void) {',
-			'   gl_Position = vec4((${Uniform.ProjectionMatrix} * vec3(${Attrib.Position}, 1.0)).xy, 0.0, 1.0);',
+			'   gl_Position = vec4( ((${Attrib.Position} + ${Uniform.OffsetVector}) / ${Uniform.ProjectionVector}) + center , 0.0, 1.0);',
 			'   vTexCoord = ${Attrib.TexCoord};',
 			'   vColor = ${Attrib.Color};',
 			'}'
@@ -63,7 +66,8 @@ class DefaultShader extends Shader {
 		getAttribLocation(Attrib.Position);
 		getAttribLocation(Attrib.TexCoord);
 		getAttribLocation(Attrib.Color);
-		getUniformLocation(Uniform.ProjectionMatrix);
+		getUniformLocation(Uniform.ProjectionVector);
+		getUniformLocation(Uniform.OffsetVector);
 		getUniformLocation(Uniform.Sampler);
 		getUniformLocation(Uniform.ColorMultiplier);
 		getUniformLocation(Uniform.ColorOffset);
@@ -80,7 +84,8 @@ class DefaultShader extends Shader {
 
 @:enum private abstract Uniform(String) from String to String {
 	var Sampler = "uSampler0";
-	var ProjectionMatrix = "uProjectionMatrix";
+	var ProjectionVector = "uProjectionVector";
+	var OffsetVector = "uOffsetVector";
 	var Color = "uColor";
 	var Alpha = "uAlpha";
 	var ColorMultiplier = "uColorMultiplier";

@@ -12,13 +12,16 @@ class PatternFillShader extends Shader {
 		vertexSrc = [
 			'attribute vec2 ${Attrib.Position};',
 			'uniform mat3 ${Uniform.TranslationMatrix};',
-			'uniform mat3 ${Uniform.ProjectionMatrix};',
+			'uniform vec2 ${Uniform.ProjectionVector};',
+			'uniform vec2 ${Uniform.OffsetVector};',
 			'uniform mat3 ${Uniform.PatternMatrix};',
 			
 			'varying vec2 vPosition;',
 			
 			'void main(void) {',
-			'   gl_Position = vec4((${Uniform.ProjectionMatrix} * ${Uniform.TranslationMatrix} * vec3(${Attrib.Position}, 1.0)).xy, 0.0, 1.0);',
+			'   vec3 v = ${Uniform.TranslationMatrix} * vec3(${Attrib.Position} , 1.0);',
+			'   v -= ${Uniform.OffsetVector}.xyx;',
+			'   gl_Position = vec4( v.x / ${Uniform.ProjectionVector}.x -1.0, v.y / - ${Uniform.ProjectionVector}.y + 1.0 , 0.0, 1.0);',
 			'   vPosition = (${Uniform.PatternMatrix} * vec3(${Attrib.Position}, 1)).xy;',
 			'}'
 
@@ -67,7 +70,8 @@ class PatternFillShader extends Shader {
 		
 		getUniformLocation(Uniform.TranslationMatrix);
 		getUniformLocation(Uniform.PatternMatrix);
-		getUniformLocation(Uniform.ProjectionMatrix);
+		getUniformLocation(Uniform.ProjectionVector);
+		getUniformLocation(Uniform.OffsetVector);
 		getUniformLocation(Uniform.Sampler);
 		getUniformLocation(Uniform.PatternTL);
 		getUniformLocation(Uniform.PatternBR);
@@ -88,7 +92,8 @@ class PatternFillShader extends Shader {
 	var PatternTL = "uPatternTL";
 	var PatternBR = "uPatternBR";
 	var Sampler = DefUniform.Sampler;
-	var ProjectionMatrix = DefUniform.ProjectionMatrix;
+	var ProjectionVector = DefUniform.ProjectionVector;
+	var OffsetVector = DefUniform.OffsetVector;
 	var Color = DefUniform.Color;
 	var Alpha = DefUniform.Alpha;
 	var ColorMultiplier = DefUniform.ColorMultiplier;

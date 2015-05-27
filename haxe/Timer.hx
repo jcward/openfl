@@ -1,5 +1,5 @@
 package haxe;
-#if (macro || (!neko && !cpp && !nodejs))
+#if (macro || (!neko && !cpp))
 
 
 // Original haxe.Timer class
@@ -41,7 +41,7 @@ package haxe;
 	the child class.
 **/
 class Timer {
-	#if (flash || js || java || python)
+	#if (flash || js || java)
 
 	#if (flash || js)
 		private var id : Null<Int>;
@@ -62,9 +62,12 @@ class Timer {
 		The accuracy of this may be platform-dependent.
 	**/
 	public function new( time_ms : Int ){
-		#if flash
+		#if flash9
 			var me = this;
 			id = untyped __global__["flash.utils.setInterval"](function() { me.run(); },time_ms);
+		#elseif flash
+			var me = this;
+			id = untyped _global["setInterval"](function() { me.run(); },time_ms);
 		#elseif js
 			var me = this;
 			id = untyped setInterval(function() me.run(),time_ms);
@@ -86,8 +89,10 @@ class Timer {
 		#if (flash || js)
 			if( id == null )
 				return;
-			#if flash
+			#if flash9
 				untyped __global__["flash.utils.clearInterval"](id);
+			#elseif flash
+				untyped _global["clearInterval"](id);
 			#elseif js
 				untyped clearInterval(id);
 			#end
@@ -185,7 +190,7 @@ private class TimerTask extends java.util.TimerTask {
 		this.timer = timer;
 	}
 
-	@:overload override public function run():Void {
+	@:overload public function run():Void {
 		timer.run();
 	}
 }

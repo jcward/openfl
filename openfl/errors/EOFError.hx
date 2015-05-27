@@ -19,8 +19,6 @@ class EOFError extends Error {
 		
 		super ("End of file was encountered", 2030);
 		
-		name = "EOFError";
-		
 	}
 	
 	

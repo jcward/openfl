@@ -31,11 +31,9 @@ class IllegalOperationError extends Error {
 	 * 
 	 * @param message A string associated with the error object.
 	 */
-	public function new (message:String = "") {
+	public function new (inMessage:String = "") {
 		
-		super (message, 0);
-		
-		name = "IllegalOperationError";
+		super (inMessage, 0);
 		
 	}
 	

@@ -54,10 +54,8 @@ import openfl.events.IEventDispatcher;
 class EventDispatcher implements IEventDispatcher {
 	
 	
-	@:noCompletion private var __dispatching:Map<String, Bool>;
 	@:noCompletion private var __targetDispatcher:IEventDispatcher;
 	@:noCompletion private var __eventMap:Map<String, Array<Listener>>;
-	@:noCompletion private var __newEventMap:Map<String, Array<Listener>>;
 	
 	
 	/**
@@ -187,9 +185,7 @@ class EventDispatcher implements IEventDispatcher {
 		
 		if (__eventMap == null) {
 			
-			__dispatching = new Map ();
-			__eventMap = new Map ();
-			__newEventMap = new Map ();
+			__eventMap = new Map<String, Array<Listener>> ();
 			
 		}
 		
@@ -201,26 +197,7 @@ class EventDispatcher implements IEventDispatcher {
 			
 		} else {
 			
-			var list;
-			
-			if (__dispatching.get (type) == true) {
-				
-				if (!__newEventMap.exists (type)) {
-					
-					list = __eventMap.get (type).copy ();
-					__newEventMap.set (type, list);
-					
-				} else {
-					
-					list = __newEventMap.get (type);
-					
-				}
-				
-			} else {
-				
-				list = __eventMap.get (type);
-				
-			}
+			var list = __eventMap.get (type);
 			
 			for (i in 0...list.length) {
 				
@@ -255,12 +232,9 @@ class EventDispatcher implements IEventDispatcher {
 		
 		if (__eventMap == null || event == null) return false;
 		
-		var type = event.type;
+		var list = __eventMap.get (event.type);
 		
-		var list = __eventMap.get (type);
 		if (list == null) return false;
-		
-		__dispatching.set (type, true);
 		
 		if (event.target == null) {
 			
@@ -293,7 +267,7 @@ class EventDispatcher implements IEventDispatcher {
 				
 				if (event.__isCancelledNow) {
 					
-					break;
+					return true;
 					
 				}
 				
@@ -306,33 +280,6 @@ class EventDispatcher implements IEventDispatcher {
 			}
 			
 		}
-		
-		if (__newEventMap != null && __newEventMap.exists (type)) {
-			
-			var list = __newEventMap.get (type);
-			
-			if (list.length > 0) {
-				
-				__eventMap.set (type, list);
-				
-			} else {
-				
-				__eventMap.remove (type);
-				
-			}
-			
-			if (!__eventMap.iterator ().hasNext ()) {
-				
-				__eventMap = null;
-				__newEventMap = null;
-				
-			}
-			
-			__newEventMap.remove (type);
-			
-		}
-		
-		__dispatching.set (event.type, false);
 		
 		return true;
 		
@@ -387,22 +334,8 @@ class EventDispatcher implements IEventDispatcher {
 		if (__eventMap == null) return;
 		
 		var list = __eventMap.get (type);
-		if (list == null) return;
 		
-		if (__dispatching.get (type) == true) {
-			
-			if (!__newEventMap.exists (type)) {
-				
-				list = __eventMap.get (type).copy ();
-				__newEventMap.set (type, list);
-				
-			} else {
-				
-				list = __newEventMap.get (type);
-				
-			}
-			
-		}
+		if (list == null) return;
 		
 		for (i in 0...list.length) {
 			
@@ -424,7 +357,6 @@ class EventDispatcher implements IEventDispatcher {
 		if (!__eventMap.iterator ().hasNext ()) {
 			
 			__eventMap = null;
-			__newEventMap = null;
 			
 		}
 		

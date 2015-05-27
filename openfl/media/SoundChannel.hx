@@ -106,7 +106,6 @@ class SoundChannel extends EventDispatcher {
 		
 		#if !html5
 		__source.stop ();
-		__dispose ();
 		#else
 		__soundInstance.stop ();
 		#end
@@ -114,20 +113,16 @@ class SoundChannel extends EventDispatcher {
 	}
 	
 	
+	#if html5
 	@:noCompletion private function __dispose ():Void {
 		
 		if (!__isValid) return;
 		
-		#if !html5
-		__source.dispose ();
-		#else
 		__soundInstance.stop ();
 		__soundInstance = null;
-		#end
-		
-		__isValid = false;
 		
 	}
+	#end
 	
 	
 	
@@ -218,7 +213,6 @@ class SoundChannel extends EventDispatcher {
 	
 	@:noCompletion private function source_onComplete ():Void {
 		
-		__dispose ();
 		dispatchEvent (new Event (Event.SOUND_COMPLETE));
 		
 	}

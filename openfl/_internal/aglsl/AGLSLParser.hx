@@ -22,12 +22,6 @@ class AGLSLParser {
 		
 		#if html5
 		header += "precision highp float;\n";
-		#elseif (android || ios)
-		if (desc.header.type == "vertex") {
-			
-			header += "precision highp float;\n";
-			
-		}
 		#end
 		
 		var tag = desc.header.type.charAt (0); //TODO

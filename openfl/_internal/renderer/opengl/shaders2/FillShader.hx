@@ -12,7 +12,8 @@ class FillShader extends Shader {
 		vertexSrc = [
 			'attribute vec2 ${Attrib.Position};',
 			'uniform mat3 ${Uniform.TranslationMatrix};',
-			'uniform mat3 ${Uniform.ProjectionMatrix};',
+			'uniform vec2 ${Uniform.ProjectionVector};',
+			'uniform vec2 ${Uniform.OffsetVector};',
 			
 			'uniform vec4 ${Uniform.Color};',
 			'uniform float ${Uniform.Alpha};',
@@ -31,7 +32,9 @@ class FillShader extends Shader {
 			'}',			
 			
 			'void main(void) {',
-			'   gl_Position = vec4((${Uniform.ProjectionMatrix} * ${Uniform.TranslationMatrix} * vec3(${Attrib.Position}, 1.0)).xy, 0.0, 1.0);',
+			'   vec3 v = ${Uniform.TranslationMatrix} * vec3(${Attrib.Position}, 1.0);',
+			'   v -= ${Uniform.OffsetVector}.xyx;',
+			'   gl_Position = vec4( v.x / ${Uniform.ProjectionVector}.x -1.0, v.y / - ${Uniform.ProjectionVector}.y + 1.0 , 0.0, 1.0);',
 			'   vColor = colorTransform(${Uniform.Color}, ${Uniform.Alpha}, ${Uniform.ColorMultiplier}, ${Uniform.ColorOffset});',
 			'}'
 
@@ -57,7 +60,8 @@ class FillShader extends Shader {
 		
 		getAttribLocation(Attrib.Position);
 		getUniformLocation(Uniform.TranslationMatrix);
-		getUniformLocation(Uniform.ProjectionMatrix);
+		getUniformLocation(Uniform.ProjectionVector);
+		getUniformLocation(Uniform.OffsetVector);
 		getUniformLocation(Uniform.Color);
 		getUniformLocation(Uniform.ColorMultiplier);
 		getUniformLocation(Uniform.ColorOffset);
@@ -71,7 +75,8 @@ class FillShader extends Shader {
 
 @:enum private abstract Uniform(String) from String to String {
 	var TranslationMatrix = "uTranslationMatrix";
-	var ProjectionMatrix = DefUniform.ProjectionMatrix;
+	var ProjectionVector = DefUniform.ProjectionVector;
+	var OffsetVector = DefUniform.OffsetVector;
 	var Color = DefUniform.Color;
 	var Alpha = DefUniform.Alpha;
 	var ColorMultiplier = DefUniform.ColorMultiplier;

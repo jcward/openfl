@@ -65,7 +65,7 @@ class Texture extends TextureBase {
 		
 		var image = @:privateAccess (bitmapData.__image);
 		
-		if (!image.premultiplied && image.transparent) {
+		if (!image.premultiplied) {
 			
 			image = image.clone ();
 			image.premultiplied = true;

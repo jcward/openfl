@@ -5,17 +5,13 @@ import haxe.io.Path;
 import haxe.Utf8;
 import haxe.xml.Fast;
 import haxe.Timer;
-import lime.graphics.cairo.Cairo;
-import lime.graphics.cairo.CairoFont;
 import lime.graphics.opengl.GLTexture;
 import lime.system.System;
 import lime.text.TextLayout;
 import lime.ui.Mouse;
 import lime.ui.MouseCursor;
-import openfl._internal.renderer.cairo.CairoShape;
 import openfl._internal.renderer.canvas.CanvasTextField;
 import openfl._internal.renderer.dom.DOMTextField;
-import openfl._internal.renderer.cairo.CairoTextField;
 import openfl._internal.renderer.opengl.GLTextField;
 import openfl._internal.renderer.RenderSession;
 import openfl.display.DisplayObject;
@@ -563,7 +559,6 @@ class TextField extends InteractiveObject {
 	 */
 	@:isVar public var wordWrap (get, set):Bool;
 	
-	@:noCompletion private var __boundsDirty:Bool;
 	@:noCompletion private var __cursorPosition:Int;
 	@:noCompletion private var __cursorTimer:Timer;
 	@:noCompletion private var __dirty:Bool;
@@ -593,8 +588,6 @@ class TextField extends InteractiveObject {
 	private var __hiddenInput:InputElement;
 	#end
 	
-	@:noCompletion public var __cairo:Cairo;
-	@:noCompletion public var __cairoFont:CairoFont;
 	
 	/**
 	 * Creates a new TextField instance. After you create the TextField instance,
@@ -611,7 +604,6 @@ class TextField extends InteractiveObject {
 		__width = 100;
 		__height = 100;
 		__text = "";
-		__boundsDirty = true;
 		
 		type = TextFieldType.DYNAMIC;
 		autoSize = TextFieldAutoSize.NONE;
@@ -1011,50 +1003,14 @@ class TextField extends InteractiveObject {
 		
 	}
 	
-	@:noCompletion private function __calculateBounds():Rectangle {
-		
-		var textWidth = __getLineWidth( -1 );
-		
-		var x : Float, w : Float, h : Float;
-		
-		x = 0;
-		
-		if (autoSize == TextFieldAutoSize.LEFT) {
-			w = textWidth + 4;
-			h = textHeight + 4;
-		}
-		else if (autoSize == TextFieldAutoSize.RIGHT) {
-			
-			w = textWidth + 4;
-			h = textHeight + 4;
-			x += width - w;
-		}
-		else if (autoSize == TextFieldAutoSize.CENTER) {
-			
-			w = textWidth + 4;
-			h = textHeight + 4;
-			x += width / 2 - w / 2;
-		}
-		else
-		{
-			w = width;
-			h = height;
-		}
-		
-		if ( border )
-		{
-			w += 1;
-			h += 1;
-		}
-		
-		return new Rectangle( x, 0, w, h );
-	}
 	
 	@:noCompletion private override function __getBounds (rect:Rectangle, matrix:Matrix):Void {
 		
-		var bounds = __calculateBounds();	
-		bounds = bounds.transform (matrix);
+		var bounds = new Rectangle (0, 0, __width, __height);
+		bounds.transform (__worldTransform);
+		
 		rect.__expand (bounds.x, bounds.y, bounds.width, bounds.height);
+		
 	}
 	
 	
@@ -1109,22 +1065,7 @@ class TextField extends InteractiveObject {
 				case "_sans":
 					
 					#if windows
-					if ( format.bold ) 
-					{
-						if ( format.italic ) {
-							fontList = [ systemFontDirectory + "/arialbi.ttf" ];
-						} else {
-							fontList = [ systemFontDirectory + "/arialbd.ttf" ];
-						}
-					}
-					else
-					{
-						if ( format.italic ) {
-							fontList = [ systemFontDirectory + "/ariali.ttf" ];
-						} else {
-							fontList = [ systemFontDirectory + "/arial.ttf" ];
-						}
-					}
+					fontList = [ systemFontDirectory + "/arial.ttf" ];
 					#elseif (mac || ios)
 					fontList = [ systemFontDirectory + "/Arial Black.ttf", systemFontDirectory + "/Arial.ttf", systemFontDirectory + "/Helvetica.ttf" ];
 					#elseif linux
@@ -1137,44 +1078,12 @@ class TextField extends InteractiveObject {
 				
 				case "_serif":
 					
-					#if windows
-					if ( format.bold ) 
-					{
-						if ( format.italic ) {
-							fontList = [ systemFontDirectory + "/timesbi.ttf" ];
-						} else {
-							fontList = [ systemFontDirectory + "/timesbd.ttf" ];
-						}
-					}
-					else
-					{
-						if ( format.italic ) {
-							fontList = [ systemFontDirectory + "/timesi.ttf" ];
-						} else {
-							fontList = [ systemFontDirectory + "/times.ttf" ];
-						}
-					}
-					#end
+					// skip
 				
 				case "_typewriter":
 					
 					#if windows
-					if ( format.bold ) 
-					{
-						if ( format.italic ) {
-							fontList = [ systemFontDirectory + "/courbi.ttf" ];
-						} else {
-							fontList = [ systemFontDirectory + "/courbd.ttf" ];
-						}
-					}
-					else
-					{
-						if ( format.italic ) {
-							fontList = [ systemFontDirectory + "/couri.ttf" ];
-						} else {
-							fontList = [ systemFontDirectory + "/cour.ttf" ];
-						}
-					}
+					fontList = [ systemFontDirectory + "/cour.ttf" ];
 					#elseif (mac || ios)
 					fontList = [ systemFontDirectory + "/Courier New.ttf", systemFontDirectory + "/Courier.ttf" ];
 					#elseif linux
@@ -1698,10 +1607,6 @@ class TextField extends InteractiveObject {
 		
 	}
 	
-	@:noCompletion public override function __renderCairo (renderSession:RenderSession):Void {
-		
-		CairoTextField.render (this, renderSession);
-	}
 	
 	@:noCompletion public override function __renderCanvas (renderSession:RenderSession):Void {
 		
@@ -2251,14 +2156,14 @@ class TextField extends InteractiveObject {
 	}
 	
 	
-	@:noCompletion private function get_textColor ():Int { 
+	@:noCompletion public function get_textColor ():Int { 
 		
 		return __textFormat.color;
 		
 	}
 	
 	
-	@:noCompletion private function set_textColor (value:Int):Int {
+	@:noCompletion public function set_textColor (value:Int):Int {
 		
 		if (value != __textFormat.color) __dirty = true;
 		
@@ -2276,7 +2181,7 @@ class TextField extends InteractiveObject {
 		
 	}
 	
-	@:noCompletion private function get_textWidth ():Float {
+	@:noCompletion public function get_textWidth ():Float {
 		
 		#if (js && html5)
 		
@@ -2319,7 +2224,7 @@ class TextField extends InteractiveObject {
 	}
 	
 	
-	@:noCompletion private function get_textHeight ():Float {
+	@:noCompletion public function get_textHeight ():Float {
 		
 		#if (js && html5)
 		
@@ -2347,7 +2252,7 @@ class TextField extends InteractiveObject {
 		//TODO: might need robustness check for pathological cases (multiple format ranges) -- would need to change how line heights are calculated
 		var th = 0.0;
 		for (i in 0...numLines) {
-			th += __getLineMetric(i, LINE_HEIGHT) + __getLineMetric( i, DESCENDER );
+			th += __getLineMetric(i, LINE_HEIGHT);
 			if (i == numLines - 1) {
 				th -= __getLineMetric(i, LEADING);
 			}
@@ -2359,7 +2264,7 @@ class TextField extends InteractiveObject {
 	}
 	
 	
-	@:noCompletion private function set_type (value:TextFieldType):TextFieldType {
+	@:noCompletion public function set_type (value:TextFieldType):TextFieldType {
 		
 		if (value != type) {
 			
@@ -2384,7 +2289,7 @@ class TextField extends InteractiveObject {
 	}
 	
 	
-	override private function get_width ():Float {
+	override public function get_width ():Float {
 		
 		if (autoSize == TextFieldAutoSize.LEFT) {
 			
@@ -2400,7 +2305,7 @@ class TextField extends InteractiveObject {
 	}
 	
 	
-	override private function set_width (value:Float):Float {
+	override public function set_width (value:Float):Float {
 		
 		if (scaleX != 1 || __width != value) {
 			
@@ -2415,14 +2320,14 @@ class TextField extends InteractiveObject {
 	}
 	
 	
-	@:noCompletion private function get_wordWrap ():Bool {
+	@:noCompletion public function get_wordWrap ():Bool {
 		
 		return wordWrap;
 		
 	}
 	
 	
-	@:noCompletion private function set_wordWrap (value:Bool):Bool {
+	@:noCompletion public function set_wordWrap (value:Bool):Bool {
 		
 		//if (value != wordWrap) __dirty = true;
 		return wordWrap = value;

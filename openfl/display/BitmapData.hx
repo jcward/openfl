@@ -1,7 +1,6 @@
 package openfl.display; #if !flash #if !openfl_legacy
 
 
-import lime.graphics.cairo.CairoSurface;
 import lime.graphics.ImageChannel;
 import lime.graphics.opengl.GLBuffer;
 import lime.graphics.opengl.GLTexture;
@@ -96,7 +95,6 @@ import js.Browser;
 @:access(lime.graphics.ImageBuffer)
 @:access(lime.math.Rectangle)
 @:access(openfl.geom.ColorTransform)
-@:access(openfl.geom.Matrix)
 @:access(openfl.geom.Point)
 @:access(openfl.geom.Rectangle)
 
@@ -133,16 +131,14 @@ class BitmapData implements IBitmapDrawable {
 	 */
 	public var width (default, null):Int;
 	
+	@:noCompletion @:dox(hide) public var blendMode:BlendMode;
 	@:noCompletion @:dox(hide) public var __worldTransform:Matrix;
 	@:noCompletion @:dox(hide) public var __worldColorTransform:ColorTransform;
 	@:noCompletion @:dox(hide) public var __cacheAsBitmap:Bool;
 	
-	@:noCompletion private var __blendMode:BlendMode;
 	@:noCompletion private var __buffer:GLBuffer;
 	@:noCompletion private var __image:Image;
 	@:noCompletion private var __isValid:Bool;
-	@:noCompletion private var __surface:CairoSurface;
-	@:noCompletion private var __surfaceImage:Image;
 	@:noCompletion private var __texture:GLTexture;
 	@:noCompletion private var __textureImage:Image;
 	@:noCompletion private var __framebuffer:FilterTexture;
@@ -884,37 +880,6 @@ class BitmapData implements IBitmapDrawable {
 	}
 	
 	
-	public function getSurface ():CairoSurface {
-		
-		if (!__isValid) return null;
-		
-		if (__surface == null) {
-			
-			__image.dirty = true;
-			
-		}
-		
-		if (__image != null && __image.dirty) {
-			
-			if (__surface != null) {
-				
-				__surface.destroy ();
-				
-			}
-			
-			__surfaceImage = __image.clone ();
-			__surfaceImage.format = BGRA;
-			__surfaceImage.premultiplied = true;
-			__surface = CairoSurface.fromImage (__surfaceImage);
-			__image.dirty = false;
-			
-		}
-		
-		return __surface;
-		
-	}
-	
-	
 	public function getTexture (gl:GLRenderContext):GLTexture {
 		
 		if (!__isValid) return null;
@@ -929,8 +894,8 @@ class BitmapData implements IBitmapDrawable {
 			gl.bindTexture (gl.TEXTURE_2D, __texture);
 			gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 			gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-			gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-			gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+			gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+			gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 			__image.dirty = true;
 			
 		}
@@ -939,15 +904,8 @@ class BitmapData implements IBitmapDrawable {
 			
 			var format = (__image.buffer.bitsPerPixel == 1 ? gl.ALPHA : gl.RGBA);
 			gl.bindTexture (gl.TEXTURE_2D, __texture);
-			var textureImage = __image;
-			
-			if (!textureImage.premultiplied && !textureImage.transparent) {
-				
-				textureImage = textureImage.clone ();
-				textureImage.premultiplied = true;
-				
-			}
-			
+			var textureImage = __image.clone ();
+			textureImage.premultiplied = true;
 			gl.texImage2D (gl.TEXTURE_2D, 0, format, width, height, 0, format, gl.UNSIGNED_BYTE, textureImage.data);
 			gl.bindTexture (gl.TEXTURE_2D, null);
 			__image.dirty = false;
@@ -1568,135 +1526,6 @@ class BitmapData implements IBitmapDrawable {
 	}
 	
 	
-	@:noCompletion @:dox(hide) public function __drawGL (renderSession:RenderSession, width:Int, height:Int, source:IBitmapDrawable, matrix:Matrix = null, colorTransform:ColorTransform = null, blendMode:BlendMode = null, clipRect:Rectangle = null, smoothing:Bool = false, drawSelf:Bool = false, clearBuffer:Bool = false, readPixels:Bool = false):Void {
-		
-		var renderer = @:privateAccess Lib.current.stage.__renderer;
-		if (renderer == null) return;
-		
-		var renderSession = @:privateAccess renderer.renderSession;
-		var gl:GLRenderContext = renderSession.gl;
-		if (gl == null) return;
-		
-		var spritebatch = renderSession.spriteBatch;
-		var renderTransparent = renderSession.renderer.transparent;
-
-		var tmpRect = clipRect == null ? new Rectangle (0, 0, width, height) : clipRect.clone ();
-		
-		renderSession.renderer.transparent = transparent;
-		
-		if (__framebuffer == null) {
-			
-			__framebuffer = new FilterTexture (gl, width, height, smoothing);
-			
-		}
-		
-		__framebuffer.resize (width, height);
-		gl.bindFramebuffer (gl.FRAMEBUFFER, __framebuffer.frameBuffer);
-		
-		renderer.setViewport (0, 0, width, height);
-		
-		spritebatch.begin (renderSession, drawSelf ? null : tmpRect);
-		
-		// enable writing to all the colors and alpha
-		gl.colorMask (true, true, true, true);
-		renderSession.blendModeManager.setBlendMode (BlendMode.NORMAL);
-		
-		renderSession.shaderManager.setShader (renderSession.shaderManager.defaultShader, true);
-		
-		if (clearBuffer || drawSelf) {
-			
-			__framebuffer.clear ();
-			
-		}
-		
-		if (drawSelf) {
-			
-			__worldTransform.identity ();
-			__flipMatrix (__worldTransform);
-			this.__renderGL (renderSession);
-			spritebatch.stop ();
-			gl.deleteTexture (__texture);
-			spritebatch.start (tmpRect);
-			
-		}
-		
-		var ctCache = source.__worldColorTransform;
-		var matrixCache = source.__worldTransform;
-		var blendModeCache = source.__blendMode;
-		var cached = source.__cacheAsBitmap;
-		
-		var m = matrix != null ? matrix.clone () : new Matrix ();
-		
-		__flipMatrix (m);
-		
-		source.__worldTransform = m;
-		source.__worldColorTransform = colorTransform != null ? colorTransform : new ColorTransform ();
-		source.__blendMode = blendMode;
-		source.__cacheAsBitmap = false;
-		
-		source.__updateChildren (false);
-		
-		source.__renderGL (renderSession);
-		
-		source.__worldColorTransform = ctCache;
-		source.__worldTransform = matrixCache;
-		source.__blendMode = blendModeCache;
-		source.__cacheAsBitmap = cached;
-		
-		source.__updateChildren (true);
-		
-		spritebatch.finish ();
-		
-		if (readPixels) {
-			
-			// TODO is this possible?
-			if (__image.width != width || __image.height != height) {
-				
-				__image.resize (width, height);
-				
-			}
-			
-			gl.readPixels (0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, __image.buffer.data);
-			
-		}
-		
-		gl.bindFramebuffer (gl.FRAMEBUFFER, renderSession.defaultFramebuffer);
-		
-		renderer.setViewport (0, 0, renderSession.renderer.width, renderSession.renderer.height);
-		
-		renderSession.renderer.transparent = renderTransparent;
-		
-		gl.colorMask (true, true, true, renderSession.renderer.transparent);
-		
-		__usingFramebuffer = true;
-		
-		if (__image != null) {
-			
-			__image.dirty = false;
-			__image.premultiplied = true;
-			
-		}
-		
-		__createUVs ();
-		__isValid = true;
-		
-	}
-	
-	
-	@:noCompletion @:dox(hide) private inline function __flipMatrix (m:Matrix):Void {
-		
-		var tx = m.tx;
-		var ty = m.ty;
-		m.tx = 0;
-		m.ty = 0;
-		m.scale (1, -1);
-		m.translate (0, height);
-		m.tx += tx;
-		m.ty -= ty;
-		
-	}
-	
-	
 	@:noCompletion private static inline function __flipPixel (pixel:Int):Int {
 		
 		return (pixel & 0xFF) << 24 | (pixel >>  8 & 0xFF) << 16 | (pixel >> 16 & 0xFF) <<  8 | (pixel >> 24 & 0xFF);
@@ -1786,51 +1615,6 @@ class BitmapData implements IBitmapDrawable {
 	}
 	
 	
-	@:noCompletion @:dox(hide) public function __renderCairo (renderSession:RenderSession):Void {
-		
-		if (!__isValid) return;
-		
-		var cairo = renderSession.cairo;
-		
-		if (__worldTransform == null) __worldTransform = new Matrix ();
-		
-		//context.globalAlpha = 1;
-		var transform = __worldTransform;
-		
-		if (renderSession.roundPixels) {
-			
-			var matrix = transform.__toMatrix3 ();
-			matrix.tx = Math.round (matrix.tx);
-			matrix.ty = Math.round (matrix.ty);
-			cairo.matrix = matrix;
-			//context.setTransform (transform.a, transform.b, transform.c, transform.d, Std.int (transform.tx), Std.int (transform.ty));
-			
-		} else {
-			
-			cairo.matrix = transform.__toMatrix3 ();
-			//context.setTransform (transform.a, transform.b, transform.c, transform.d, transform.tx, transform.ty);
-			
-		}
-		
-		var surface = getSurface ();
-		
-		if (surface != null) {
-			
-			cairo.setSourceSurface (surface, 0, 0);
-			cairo.paint ();
-			
-		}
-		
-	}
-	
-	
-	@:noCompletion @:dox(hide) public function __renderCairoMask (renderSession:RenderSession):Void {
-		
-		
-		
-	}
-	
-	
 	@:noCompletion @:dox(hide) public function __renderCanvas (renderSession:RenderSession):Void {
 		
 		#if (js && html5)
@@ -1861,16 +1645,142 @@ class BitmapData implements IBitmapDrawable {
 	}
 	
 	
-	@:noCompletion @:dox(hide) public function __renderCanvasMask (renderSession:RenderSession):Void {
+	@:noCompletion @:dox(hide) public function __renderGL (renderSession:RenderSession):Void {
+		
+		renderSession.spriteBatch.renderBitmapData(this, true, __worldTransform, __worldColorTransform, __worldColorTransform.alphaMultiplier, blendMode);
+		
+	}
+	
+	
+	@:noCompletion @:dox(hide) public function __drawGL (renderSession:RenderSession, width:Int, height:Int, source:IBitmapDrawable, matrix:Matrix = null, colorTransform:ColorTransform = null, blendMode:BlendMode = null, clipRect:Rectangle = null, smoothing:Bool = false, drawSelf:Bool = false, clearBuffer:Bool = false, readPixels:Bool = false):Void {
+		
+		var renderer = @:privateAccess Lib.current.stage.__renderer;
+		if (renderer == null) return;
+		
+		var renderSession = @:privateAccess renderer.renderSession;
+		var gl:GLRenderContext = renderSession.gl;
+		if (gl == null) return;
+		
+		var spritebatch = renderSession.spriteBatch;
+		var mainProjection = renderSession.projection;
+		var renderTransparent = renderSession.renderer.transparent;
+
+		var tmpRect = clipRect == null ? new Rectangle(0, 0, width, height) : clipRect.clone();
+		
+		renderSession.projection = new Point((width / 2), -(height / 2));
+		renderSession.renderer.transparent = transparent;
+		
+		if (__framebuffer == null) {
+			__framebuffer = new FilterTexture(gl, width, height, smoothing);
+		}
+		
+		__framebuffer.resize(width, height);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, __framebuffer.frameBuffer);
+		
+		gl.viewport (0, 0, width, height);
+		
+		spritebatch.begin(renderSession, drawSelf ? null : tmpRect);
+		
+		// enable writing to all the colors and alpha
+		gl.colorMask(true, true, true, true);
+		renderSession.blendModeManager.setBlendMode(BlendMode.NORMAL);
+		
+		if (clearBuffer || drawSelf) {
+			__framebuffer.clear();
+		}
+
+		if (drawSelf) {
+			__worldTransform.identity();
+			__flipMatrix(__worldTransform);
+			this.__renderGL(renderSession);
+			spritebatch.stop();
+			gl.deleteTexture(__texture);
+			spritebatch.start(tmpRect);
+		}
+		
+		var ctCache = source.__worldColorTransform;
+		var matrixCache = source.__worldTransform;
+		var blendModeCache = source.blendMode;
+		var cached = source.__cacheAsBitmap;
+		
+		var m = matrix != null ? matrix.clone() : new Matrix ();
+
+		__flipMatrix(m);
+		
+		source.__worldTransform = m;
+		source.__worldColorTransform = colorTransform != null ? colorTransform : new ColorTransform();
+		source.blendMode = blendMode;
+		source.__cacheAsBitmap = false;
+		
+		source.__updateChildren (false);
+		
+		source.__renderGL (renderSession);
+		
+		source.__worldColorTransform = ctCache;
+		source.__worldTransform = matrixCache;
+		source.blendMode = blendModeCache;
+		source.__cacheAsBitmap = cached;
+		
+		source.__updateChildren (true);
+		
+		spritebatch.finish();
+		
+		if (readPixels) {
+			
+			// TODO is this possible?
+			if (__image.width != width || __image.height != height) {
+				
+				__image.resize(width, height);
+				
+			}
+			
+			gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, __image.buffer.data);
+			
+		}
+		
+		gl.bindFramebuffer(gl.FRAMEBUFFER, renderSession.defaultFramebuffer);
+		
+		gl.viewport(0, 0, renderSession.renderer.width, renderSession.renderer.height);
+		
+		renderSession.projection = mainProjection;
+		renderSession.renderer.transparent = renderTransparent;
+		
+		gl.colorMask(true, true, true, renderSession.renderer.transparent);
+		
+		__usingFramebuffer = true;
+		if(__image != null) {
+			__image.dirty = false;
+			__image.premultiplied = true;
+		}
+		__createUVs();
+		__isValid = true;
+		
+	}
+	
+	@:noCompletion @:dox(hide) private inline function __flipMatrix (m:Matrix):Void {
+		
+		var tx = m.tx;
+		var ty = m.ty;
+		m.tx = 0;
+		m.ty = 0;
+		m.scale(1, -1);
+		m.translate(0, height);
+		m.tx += tx;
+		m.ty -= ty;
+		
+	}
+	
+	
+	@:noCompletion @:dox(hide) public function __renderMask (renderSession:RenderSession):Void {
 		
 		
 		
 	}
 	
 	
-	@:noCompletion @:dox(hide) public function __renderGL (renderSession:RenderSession):Void {
+	@:noCompletion @:dox(hide) public function __updateMask (maskGraphics:Graphics):Void {
 		
-		renderSession.spriteBatch.renderBitmapData (this, false, __worldTransform, __worldColorTransform, __worldColorTransform.alphaMultiplier, __blendMode);
+		
 		
 	}
 	
@@ -1939,13 +1849,6 @@ class BitmapData implements IBitmapDrawable {
 	
 	
 	@:noCompletion @:dox(hide) public function __updateChildren (transformOnly:Bool):Void {
-		
-		
-		
-	}
-	
-	
-	@:noCompletion @:dox(hide) public function __updateMask (maskGraphics:Graphics):Void {
 		
 		
 		
