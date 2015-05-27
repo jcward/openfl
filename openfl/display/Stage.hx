@@ -19,6 +19,7 @@ import lime.ui.KeyCode;
 import lime.ui.KeyModifier;
 import lime.ui.Mouse;
 import openfl._internal.renderer.AbstractRenderer;
+import openfl._internal.renderer.cairo.CairoRenderer;
 import openfl._internal.renderer.canvas.CanvasRenderer;
 import openfl._internal.renderer.dom.DOMRenderer;
 import openfl._internal.renderer.opengl.GLRenderer;
@@ -28,11 +29,13 @@ import openfl.events.EventPhase;
 import openfl.events.FocusEvent;
 import openfl.events.KeyboardEvent;
 import openfl.events.MouseEvent;
+import openfl.events.TextEvent;
 import openfl.events.TouchEvent;
 import openfl.geom.Matrix;
 import openfl.geom.Point;
 import openfl.geom.Rectangle;
 import openfl.text.TextField;
+import openfl.ui.GameInput;
 import openfl.ui.Keyboard;
 import openfl.ui.KeyLocation;
 
@@ -162,6 +165,7 @@ import js.Browser;
  */
 
 @:access(openfl.events.Event)
+@:access(openfl.ui.GameInput)
 @:access(openfl.ui.Keyboard)
 
 
@@ -318,7 +322,7 @@ class Stage extends DisplayObjectContainer implements IModule {
 	 *                       For more information, see the "Security" chapter in
 	 *                       the <i>ActionScript 3.0 Developer's Guide</i>.
 	 */
-	public var frameRate:Float;
+	public var frameRate (get, set):Float;
 	
 	/**
 	 * A value from the StageQuality class that specifies which rendering quality
@@ -580,7 +584,6 @@ class Stage extends DisplayObjectContainer implements IModule {
 		
 		align = StageAlign.TOP_LEFT;
 		allowsFullScreen = false;
-		frameRate = 60;
 		quality = StageQuality.HIGH;
 		scaleMode = StageScaleMode.NO_SCALE;
 		stageFocusRect = true;
@@ -619,6 +622,10 @@ class Stage extends DisplayObjectContainer implements IModule {
 			case DOM (element):
 				
 				__renderer = new DOMRenderer (stageWidth, stageHeight, element);
+			
+			case CAIRO (cairo):
+				
+				__renderer = new CairoRenderer (stageWidth, stageHeight, cairo);
 			
 			default:
 			
@@ -665,35 +672,35 @@ class Stage extends DisplayObjectContainer implements IModule {
 	
 	public function onGamepadAxisMove (gamepad:Gamepad, axis:GamepadAxis, value:Float):Void {
 		
-		
+		GameInput.__onGamepadAxisMove (gamepad, axis, value);
 		
 	}
 	
 	
 	public function onGamepadButtonDown (gamepad:Gamepad, button:GamepadButton):Void {
 		
-		
+		GameInput.__onGamepadButtonDown (gamepad, button);
 		
 	}
 	
 	
 	public function onGamepadButtonUp (gamepad:Gamepad, button:GamepadButton):Void {
 		
-		
+		GameInput.__onGamepadButtonUp (gamepad, button);
 		
 	}
 	
 	
 	public function onGamepadConnect (gamepad:Gamepad):Void {
 		
-		
+		GameInput.__onGamepadConnect (gamepad);
 		
 	}
 	
 	
 	public function onGamepadDisconnect (gamepad:Gamepad):Void {
 		
-		
+		GameInput.__onGamepadDisconnect (gamepad);
 		
 	}
 	
@@ -777,6 +784,40 @@ class Stage extends DisplayObjectContainer implements IModule {
 	}
 	
 	
+	public function onTextEdit (text:String, start:Int, length:Int):Void {
+		
+		
+		
+	}
+	
+	
+	public function onTextInput (text:String):Void {
+		
+		var stack = new Array <DisplayObject> ();
+		
+		if (__focus == null) {
+			
+			__getInteractive (stack);
+			
+		} else {
+			
+			__focus.__getInteractive (stack);
+			
+		}
+		
+		var event = new TextEvent (TextEvent.TEXT_INPUT, true, false, text);
+		if (stack.length > 0) {
+			
+			stack.reverse ();
+			__fireEvent (event, stack);
+		} else {
+			
+			__broadcast (event, true);
+		}
+		
+	}
+	
+	
 	public function onTouchMove (x:Float, y:Float, id:Int):Void {
 		
 		__onTouch (TouchEvent.TOUCH_MOVE, x, y, id);
@@ -830,14 +871,16 @@ class Stage extends DisplayObjectContainer implements IModule {
 	
 	public function onWindowFocusIn ():Void {
 		
-		
+		var event = new FocusEvent (FocusEvent.FOCUS_IN, true, false, null, false, 0);
+		__broadcast (event, true);
 		
 	}
 	
 	
 	public function onWindowFocusOut ():Void {
 		
-		
+		var event = new FocusEvent (FocusEvent.FOCUS_OUT, true, false, null, false, 0);
+		__broadcast (event, true);
 		
 	}
 	
@@ -915,6 +958,17 @@ class Stage extends DisplayObjectContainer implements IModule {
 		__update (false, true);
 		
 		if (__renderer != null) {
+			
+			switch (context) {
+				
+				case CAIRO (cairo):
+					
+					cast (__renderer, CairoRenderer).cairo = cairo;
+					@:privateAccess (__renderer.renderSession).cairo = cairo;
+				
+				default:
+					
+			}
 			
 			__renderer.render (this);
 			
@@ -1563,6 +1617,34 @@ class Stage extends DisplayObjectContainer implements IModule {
 	}
 	
 	
+	@:noCompletion private inline function get_displayState ():StageDisplayState {
+		
+		return __displayState;
+		
+	}
+	
+	
+	@:noCompletion private function set_displayState (value:StageDisplayState):StageDisplayState {
+		
+		switch (value) {
+			
+			case NORMAL:
+				
+				//Lib.application.window.minimized = false;
+				Lib.application.window.fullscreen = false;
+			
+			default:
+				
+				//Lib.application.window.minimized = false;
+				Lib.application.window.fullscreen = true;
+			
+		}
+		
+		return __displayState = value;
+		
+	}
+	
+	
 	@:noCompletion private function get_focus ():InteractiveObject {
 		
 		return __focus;
@@ -1603,30 +1685,16 @@ class Stage extends DisplayObjectContainer implements IModule {
 	}
 	
 	
-	@:noCompletion private inline function get_displayState ():StageDisplayState {
+	@:noCompletion private function get_frameRate ():Float {
 		
-		return __displayState;
+		return Lib.application.frameRate;
 		
 	}
 	
 	
-	@:noCompletion private function set_displayState (value:StageDisplayState):StageDisplayState {
+	@:noCompletion private function set_frameRate (value:Float):Float {
 		
-		switch (value) {
-			
-			case NORMAL:
-				
-				//Lib.application.window.minimized = false;
-				Lib.application.window.fullscreen = false;
-			
-			default:
-				
-				//Lib.application.window.minimized = false;
-				Lib.application.window.fullscreen = true;
-			
-		}
-		
-		return __displayState = value;
+		return Lib.application.frameRate = value;
 		
 	}
 	
